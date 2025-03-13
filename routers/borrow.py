@@ -32,14 +32,14 @@ def borrow_book(user_id: int, book_id: int, db: db_dependency):
 
     book = db.query(Books).filter(Books.id == book_id).first()
     if not book:
-        raise HTTPException(status_code=404, detail="Kitap bulunamadı!")
+        raise HTTPException(status_code=404, detail="Kitap bulunamadı.")
 
     if book.stock <= 0:
-        raise HTTPException(status_code=400, detail="Kitap stokta yok!")
+        raise HTTPException(status_code=400, detail="Kitap stokta yok.")
 
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
-        raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı!")
+        raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı.")
 
 
     borrowed_book = BorrowedBook(
@@ -64,7 +64,7 @@ def return_book(user_id: int, book_id: int, db: db_dependency):
     ).first()
 
     if not borrowed_book:
-        raise HTTPException(status_code=404, detail="İade edilecek kitap bulunamadı!")
+        raise HTTPException(status_code=404, detail="İade edilecek kitap bulunamadı.")
 
     book = db.query(Books).filter(Books.id == book_id).first()
     book.stock += 1
@@ -85,7 +85,7 @@ def get_borrowed_books(db: db_dependency):
     )
 
     if not borrowed_books:
-        raise HTTPException(status_code=404, detail="Ödünç alınmış kitap bulunamadı!")
+        raise HTTPException(status_code=404, detail="Ödünç alınmış kitap bulunamadı.")
 
     return [
         BorrowedBookResponse(

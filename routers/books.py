@@ -67,14 +67,6 @@ async def read_books(db: db_dependency, books_title: str):
     raise HTTPException(status_code=404, detail="Kitap bulunamadı.")
 
 
-'''@app.get("/books/{books_title}" ,status_code=status.HTTP_200_OK)
-async def read_books(db: db_dependency, books_title: str):
-    books_model= db.query(Books).join(models.Author).filter(Books.title == books_title).first()
-    if books_model is not None:
-        return books_model
-
-    raise HTTPException(status_code=404, detail="Kitap bulunamadı.")'''
-
 @router.post("/books",status_code=status.HTTP_201_CREATED)
 async def create_book(db:db_dependency,book_request: BookRequest):
     book_model = Books(**book_request.model_dump())
