@@ -32,11 +32,6 @@ class BookResponse(BaseModel):
     stock: int
     author_id: int
 
-class AuthorResponse(BaseModel):
-    id: int
-    name: str
-    books: List[BookResponse]
-
 class AuthorBase(BaseModel):
     name: str = Field(min_length=3, max_length=100)
 
@@ -64,7 +59,8 @@ async def read_authors(db: db_dependency, authors_name: str):
                 isbn=books.isbn,
                 publication_year=books.publication_year,
                 genre=books.genre,
-                stock=books.stock
+                stock=books.stock,
+                author_id=books.author_id
             ) for books in author.books]
     )
     raise HTTPException(status_code=404, detail="Yazar bulunamadı.")

@@ -37,7 +37,6 @@ def borrow_book(user_id: int, book_id: int, db: db_dependency):
     if book.stock <= 0:
         raise HTTPException(status_code=400, detail="Kitap stokta yok!")
 
-    # Kullanıcıyı sorgula
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı!")
@@ -57,21 +56,19 @@ def borrow_book(user_id: int, book_id: int, db: db_dependency):
 
 @router.post("/return/{user_id}/{book_id}")
 def return_book(user_id: int, book_id: int, db: db_dependency):
-    # Kullanıcının aldığı kitabı bul
+
     borrowed_book = db.query(BorrowedBook).filter(
         BorrowedBook.user_id == user_id,
         BorrowedBook.book_id == book_id,
-        BorrowedBook.return_date == None  # Hala iade edilmemiş kitap
+        BorrowedBook.return_date == None
     ).first()
 
     if not borrowed_book:
         raise HTTPException(status_code=404, detail="İade edilecek kitap bulunamadı!")
 
-    # Kitap stoğunu artır
     book = db.query(Books).filter(Books.id == book_id).first()
     book.stock += 1
 
-    # Kitabı iade olarak işaretle
     borrowed_book.return_date = datetime.now()
 
     db.commit()
@@ -98,4 +95,28 @@ def get_borrowed_books(db: db_dependency):
             borrowed_date=borrowed.borrowed_date,
         )
         for borrowed in borrowed_books
+    ]
+
+
+@router.get("/user/{user_id}/history", response_model=List[BorrowedBookResponse])
+def get_user_borrow_history(user_id: int, db: db_dependency):
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı.")
+
+    borrow_history = db.query(BorrowedBook).filter(BorrowedBook.user_id == user_id).all()
+
+    if not borrow_history:
+        raise HTTPException(status_code=404, detail="Kullanıcının geçmişinde ödünç aldığı kitap bulunamadı.")
+
+    return [
+        BorrowedBookResponse(
+            id=borrow.id,
+            book_title=borrow.book.title,
+            user_name=f"{borrow.user.firstname} {borrow.user.lastname}",
+            borrowed_date=borrow.borrowed_date,
+            return_date=borrow.return_date
+        )
+        for borrow in borrow_history
     ]
