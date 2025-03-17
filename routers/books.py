@@ -6,6 +6,7 @@ from starlette import status
 import models
 from models import Books
 from database import engine, SessionLocal
+from .auth import get_current_user
 
 
 router = APIRouter(
@@ -23,6 +24,7 @@ def get_db():
 
 
 db_dependency = Annotated[Session, Depends(get_db)]
+user_dependency = Annotated[dict, Depends(get_current_user)]
 
 class BookRequest(BaseModel):
     title: str = Field(min_length=3, max_length=100)
@@ -45,12 +47,18 @@ class Config:
 
 
 @router.get("/",status_code=status.HTTP_200_OK)
-async def read_all(db: db_dependency):
+async def read_all( db: db_dependency):
+
+
     return db.query(Books).all()
 
 
 @router.get("/{books_title}", status_code=status.HTTP_200_OK, response_model=BookResponse)
-async def read_books(db: db_dependency, books_title: str):
+async def read_books(user: user_dependency, db: db_dependency,
+                     books_title: str):
+    if user is None:
+        raise HTTPException(status_code=401, detail='Kullanıcı Bulunamadı')
+
     books_model = db.query(Books).join(models.Author).filter(Books.title == books_title).first()
 
     if books_model:
@@ -68,16 +76,23 @@ async def read_books(db: db_dependency, books_title: str):
 
 
 @router.post("/books",status_code=status.HTTP_201_CREATED)
-async def create_book(db:db_dependency,book_request: BookRequest):
-    book_model = Books(**book_request.model_dump())
+async def create_book(db:db_dependency,
+                      book_request: BookRequest):
+
+
+    book_model = Books(**book_request.model_dump(),)
 
     db.add(book_model)
     db.commit()
 
 @router.put("/{books_id}",status_code=status.HTTP_204_NO_CONTENT)
-async def update_book(db: db_dependency,
+async def update_book(user: user_dependency,
+                      db: db_dependency,
                       book_request: BookRequest,
                       books_id: int = Path(gt=0)):
+
+    if user is None:
+        raise HTTPException(status_code=401, detail= 'Kullanıcı Bulunamadı')
 
     book_model = db.query(Books).filter(Books.id == books_id).first()
     if book_model is None:
@@ -92,7 +107,12 @@ async def update_book(db: db_dependency,
     db.commit()
 
 @router.delete("/{books_id}",status_code=status.HTTP_204_NO_CONTENT)
-async def delete_book(db: db_dependency, books_id: int = Path(gt=0)):
+async def delete_book(user: user_dependency, db: db_dependency,
+                      books_id: int = Path(gt=0)):
+
+    if user is None:
+        raise HTTPException(status_code=401, detail= 'Kullanıcı Bulunamadı')
+
     book_model = db.query(Books).filter(Books.id == books_id).first()
     if book_model is None:
         raise HTTPException(status_code=404, detail="Kitap bulunamadı.")

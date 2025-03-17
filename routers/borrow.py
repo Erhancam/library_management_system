@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from database import SessionLocal
 from models import Books, BorrowedBook, User
 from datetime import datetime
-
+from .auth import get_current_user
 router = APIRouter(
     prefix="/borrow",
     tags=["borrow"]
@@ -19,6 +19,7 @@ def get_db():
         db.close()
 
 db_dependency = Annotated[Session, Depends(get_db)]
+user_dependency = Annotated[dict, Depends(get_current_user)]
 
 class BorrowedBookResponse(BaseModel):
     id: int
@@ -28,7 +29,10 @@ class BorrowedBookResponse(BaseModel):
     return_date: datetime | None = None
 
 @router.post("/{user_id}/{book_id}")
-def borrow_book(user_id: int, book_id: int, db: db_dependency):
+def borrow_book(user:user_dependency ,user_id: int, book_id: int, db: db_dependency):
+
+    if user is None:
+        raise HTTPException(status_code=401, detail='Kullanıcı Bulunamadı')
 
     book = db.query(Books).filter(Books.id == book_id).first()
     if not book:
@@ -55,7 +59,11 @@ def borrow_book(user_id: int, book_id: int, db: db_dependency):
     return {"message": f"'{book.title}' kitabı {user.username} tarafından ödünç alındı."}
 
 @router.post("/return/{user_id}/{book_id}")
-def return_book(user_id: int, book_id: int, db: db_dependency):
+def return_book(user:user_dependency , user_id: int,
+                book_id: int, db: db_dependency):
+
+    if user is None:
+        raise HTTPException(status_code=401, detail='Kullanıcı Bulunamadı')
 
     borrowed_book = db.query(BorrowedBook).filter(
         BorrowedBook.user_id == user_id,
@@ -75,7 +83,10 @@ def return_book(user_id: int, book_id: int, db: db_dependency):
     return {"message": f"'{book.title}' kitabı başarıyla iade edildi."}
 
 @router.get("/borrowed-books", response_model=List[BorrowedBookResponse])
-def get_borrowed_books(db: db_dependency):
+def get_borrowed_books(user:user_dependency ,db: db_dependency):
+    if user is None:
+        raise HTTPException(status_code=401, detail='Kullanıcı Bulunamadı')
+
     borrowed_books = (
         db.query(BorrowedBook)
         .join(User)
@@ -99,7 +110,10 @@ def get_borrowed_books(db: db_dependency):
 
 
 @router.get("/user/{user_id}/history", response_model=List[BorrowedBookResponse])
-def get_user_borrow_history(user_id: int, db: db_dependency):
+def get_user_borrow_history(user:user_dependency ,user_id: int, db: db_dependency):
+
+    if user is None:
+        raise HTTPException(status_code=401, detail='Kullanıcı Bulunamadı')
 
     user = db.query(User).filter(User.id == user_id).first()
     if not user:

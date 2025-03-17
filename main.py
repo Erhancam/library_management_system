@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from routers import auth, books, authors, borrow,users
+from routers import auth, books, authors, borrow,users,api
 import models
 from database import engine
 app= FastAPI()
@@ -13,3 +13,4 @@ app.include_router(authors.router)
 
 app.include_router(borrow.router)
 app.include_router(users.router)
+app.include_router(api.router)

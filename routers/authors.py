@@ -7,6 +7,7 @@ from starlette import status
 import models
 from database import SessionLocal
 from models import Author
+from .auth import get_current_user
 
 router = APIRouter(
     prefix="/authors",
@@ -22,6 +23,7 @@ def get_db():
 
 
 db_dependency = Annotated[Session, Depends(get_db)]
+user_dependency = Annotated[dict, Depends(get_current_user)]
 
 class BookResponse(BaseModel):
     id: int
@@ -42,12 +44,18 @@ class AuthorWithBooksResponse(BaseModel):
 
 
 @router.get("/",status_code=status.HTTP_200_OK)
-async def read_all(db: db_dependency):
+async def read_all(user:user_dependency ,db: db_dependency):
+    if user is None:
+        raise HTTPException(status_code=401, detail='Kullanıcı Bulunamadı')
     return db.query(Author).all()
 
 
 @router.get("/{authors_name}", response_model=AuthorWithBooksResponse)
-async def read_authors(db: db_dependency, authors_name: str):
+async def read_authors(user:user_dependency ,db: db_dependency ,
+                       authors_name: str):
+    if user is None:
+        raise HTTPException(status_code=401, detail='Kullanıcı Bulunamadı')
+
     author = db.query(Author).join(models.Books).filter(Author.name == authors_name).first()
 
     if author:
@@ -66,14 +74,23 @@ async def read_authors(db: db_dependency, authors_name: str):
     raise HTTPException(status_code=404, detail="Yazar bulunamadı.")
 
 @router.post("/authors",status_code=status.HTTP_201_CREATED)
-async def create_author(db:db_dependency, author_request: AuthorBase):
+async def create_author(db:db_dependency,
+                        author_request: AuthorBase):
+
+
+
     author_model = Author(**author_request.model_dump())
 
     db.add(author_model)
     db.commit()
 
 @router.delete("/{authors_id}",status_code=status.HTTP_204_NO_CONTENT)
-async def delete_author(db: db_dependency, authors_id: int = Path(gt=0)):
+async def delete_author(user:user_dependency ,db: db_dependency,
+                        authors_id: int = Path(gt=0)):
+
+    if user is None:
+        raise HTTPException(status_code=401, detail='Kullanıcı Bulunamadı')
+
     author_model = db.query(Author).filter(Author.id == authors_id).first()
     if author_model is None:
         raise HTTPException(status_code=404, detail="Yazar bulunamadı.")
